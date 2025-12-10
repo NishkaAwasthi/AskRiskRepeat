@@ -426,7 +426,7 @@ const App = () => {
         </div>
 
         {/* Dark Mode Toggle (Top Right) */}
-        <div className="absolute top-6 right-6 z-10">
+        <div className="absolute top-6 right-6 z-50">
             <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 className="p-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-full shadow-sm text-rabbit-slate dark:text-slate-300 hover:text-rabbit-blue transition"
