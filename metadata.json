@@ -1,0 +1,5 @@
+{
+  "name": "Curiosity Engine",
+  "description": "A curiosity-first learning tool that generates interactive knowledge graphs using Gemini, allowing users to explore topics through connections, analogies, and active micro-quests.",
+  "requestFramePermissions": []
+}
