@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { GraphState, NodeData, NodeType, LinkData } from './types';
@@ -10,24 +9,25 @@ interface GraphCanvasProps {
   height: number;
   activeTypes: NodeType[]; // Types currently selected in Legend (if empty, show all)
   filterUnvisited: boolean; // Only show unvisited nodes
+  isDarkMode: boolean;
 }
 
-// Color mapping exported for Legend in App.tsx
+// Playful Palette
 export const getNodeColor = (type: NodeType) => {
   switch (type) {
-    case NodeType.CORE: return '#ffffff';         // White (Center)
-    case NodeType.ANALOGY: return '#f59e0b';      // Amber-500
-    case NodeType.EXPERIMENT: return '#10b981';   // Emerald-500
-    case NodeType.HISTORY: return '#8b5cf6';      // Violet-500 (Distinct from Red)
-    case NodeType.APPLICATION: return '#3b82f6';  // Blue-500
-    case NodeType.DEBATE: return '#d946ef';       // Fuchsia-500 (Distinct from Violet)
-    case NodeType.MISCONCEPTION: return '#ef4444';// Red-500
-    case NodeType.EXAMPLE: return '#06b6d4';      // Cyan-500
-    default: return '#64748b';                    // Slate-500
+    case NodeType.CORE: return '#fbbf24';         // Amber-400 (Sunny)
+    case NodeType.ANALOGY: return '#fb923c';      // Orange-400 (Warm)
+    case NodeType.EXPERIMENT: return '#4ade80';   // Green-400 (Minty)
+    case NodeType.HISTORY: return '#a78bfa';      // Violet-400 (Soft Purple)
+    case NodeType.APPLICATION: return '#60a5fa';  // Blue-400 (Sky)
+    case NodeType.DEBATE: return '#e879f9';       // Fuchsia-400 (Vibrant Pink/Purple)
+    case NodeType.MISCONCEPTION: return '#dc2626';// Red-600 (Deep, Strong Red)
+    case NodeType.EXAMPLE: return '#22d3ee';      // Cyan-400 (Aqua)
+    default: return '#94a3b8';                    // Slate-400
   }
 };
 
-const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, height, activeTypes, filterUnvisited }) => {
+const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, height, activeTypes, filterUnvisited, isDarkMode }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<NodeData, LinkData> | null>(null);
   
@@ -39,10 +39,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, hei
 
     // Initialize D3 Simulation
     const simulation = d3.forceSimulation<NodeData, LinkData>()
-      .force("link", d3.forceLink<NodeData, LinkData>().id(d => d.id).distance(140)) // Increased distance
-      .force("charge", d3.forceManyBody().strength(-500)) // Stronger repulsion
-      .force("center", d3.forceCenter(width / 2, height / 2).strength(0.08))
-      .force("collide", d3.forceCollide().radius(50).iterations(2));
+      .force("link", d3.forceLink<NodeData, LinkData>().id(d => d.id).distance(130))
+      .force("charge", d3.forceManyBody().strength(-400))
+      .force("center", d3.forceCenter(width / 2, height / 2).strength(0.05))
+      .force("collide", d3.forceCollide().radius(45).iterations(2));
 
     simulationRef.current = simulation;
 
@@ -51,10 +51,13 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, hei
     // Add definitions for filters
     const defs = svg.append("defs");
     
-    // Drop Shadow Filter
+    // Soft Drop Shadow
     const filter = defs.append("filter")
-      .attr("id", "drop-shadow")
-      .attr("height", "130%");
+      .attr("id", "soft-shadow")
+      .attr("x", "-50%")
+      .attr("y", "-50%")
+      .attr("width", "200%")
+      .attr("height", "200%");
     
     filter.append("feGaussianBlur")
       .attr("in", "SourceAlpha")
@@ -64,8 +67,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, hei
     filter.append("feOffset")
       .attr("in", "blur")
       .attr("dx", 2)
-      .attr("dy", 2)
+      .attr("dy", 3)
       .attr("result", "offsetBlur");
+
+    // Lighten shadow
+    const feComponentTransfer = filter.append("feComponentTransfer");
+    feComponentTransfer.append("feFuncA")
+        .attr("type", "linear")
+        .attr("slope", "0.2"); // Opacity of shadow
     
     const feMerge = filter.append("feMerge");
     feMerge.append("feMergeNode").attr("in", "offsetBlur");
@@ -87,6 +96,38 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, hei
       svg.selectAll("*").remove();
     };
   }, []);
+
+  // Update visual styles based on Dark Mode
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = d3.select(svgRef.current);
+    const g = svg.select("g");
+    
+    const textColor = isDarkMode ? '#f1f5f9' : '#334155';
+    const textShadow = isDarkMode ? '0px 1px 3px rgba(0,0,0,0.9)' : '0px 1px 2px rgba(255,255,255,0.8)';
+    const linkColor = isDarkMode ? '#475569' : '#cbd5e1';
+    const nodeStroke = isDarkMode ? '#1e293b' : '#ffffff';
+    const nodeStrokeVisited = isDarkMode ? '#334155' : '#f1f5f9';
+
+    // Update Links
+    g.selectAll<SVGLineElement, LinkData>(".link")
+        .transition().duration(500)
+        .attr("stroke", linkColor);
+
+    // Update Text
+    g.selectAll<SVGTextElement, NodeData>("text")
+        .transition().duration(500)
+        .attr("fill", textColor)
+        .style("text-shadow", textShadow);
+
+    // Update Nodes (Circle Borders)
+    g.selectAll<SVGGElement, NodeData>(".node").each(function(d) {
+        d3.select(this).select("circle:nth-child(2)") // The main circle
+            .transition().duration(500)
+            .attr("stroke", d.visited ? nodeStrokeVisited : nodeStroke);
+    });
+
+  }, [isDarkMode]);
 
   // Update simulation data
   useEffect(() => {
@@ -125,6 +166,13 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, hei
     simulation.alpha(1).restart();
 
     // --- Rendering ---
+    
+    // Style variables for initial render
+    const textColor = isDarkMode ? '#f1f5f9' : '#334155';
+    const textShadow = isDarkMode ? '0px 1px 3px rgba(0,0,0,0.9)' : '0px 1px 2px rgba(255,255,255,0.8)';
+    const linkColor = isDarkMode ? '#475569' : '#cbd5e1';
+    const nodeStroke = isDarkMode ? '#1e293b' : '#ffffff';
+    const nodeStrokeVisited = isDarkMode ? '#334155' : '#f1f5f9';
 
     // Links
     const link = g.selectAll<SVGLineElement, LinkData>(".link")
@@ -138,9 +186,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, hei
 
     const linkEnter = link.enter().append("line")
       .attr("class", "link")
-      .attr("stroke", "#475569")
-      .attr("stroke-width", 1.5)
-      .attr("opacity", 0.3)
+      .attr("stroke", linkColor) // Dynamic
+      .attr("stroke-width", 2)
+      .attr("opacity", 0.6)
       .attr("stroke-linecap", "round");
 
     const linkMerge = linkEnter.merge(link);
@@ -162,59 +210,102 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, hei
       .on("click", (event, d) => {
         event.stopPropagation();
         onNodeClick(d);
+      })
+      .on("mouseenter", function(event, d) {
+        // Bring to front
+        d3.select(this).raise();
+
+        // 1. Pop Effect on Main Circle
+        d3.select(this).select("circle:nth-child(2)")
+          .transition("hover-main")
+          .duration(300)
+          .ease(d3.easeBackOut)
+          .attr("r", d.type === NodeType.CORE ? 32 : 20); // Scale up ~1.3x
+
+        // 2. Expand and Brighten Halo
+        d3.select(this).select(".halo")
+          .transition("hover-halo")
+          .duration(300)
+          .ease(d3.easeCubicOut)
+          .attr("r", d.type === NodeType.CORE ? 60 : 45)
+          .attr("opacity", 0.4);
+
+        // 3. Emphasize Text
+        d3.select(this).select("text")
+          .transition("hover-text")
+          .duration(300)
+          .attr("y", d.type === NodeType.CORE ? 55 : 42) // Shift down slightly
+          .style("font-weight", "800");
+      })
+      .on("mouseleave", function(event, d) {
+        // 1. Reset Main Circle
+        d3.select(this).select("circle:nth-child(2)")
+          .transition("hover-main")
+          .duration(300)
+          .ease(d3.easeCubicOut)
+          .attr("r", d.type === NodeType.CORE ? 25 : 15);
+
+        // 2. Reset Halo
+        d3.select(this).select(".halo")
+          .transition("hover-halo")
+          .duration(300)
+          .ease(d3.easeCubicOut)
+          .attr("r", d.type === NodeType.CORE ? 42 : 28)
+          .attr("opacity", 0.2);
+
+        // 3. Reset Text
+        d3.select(this).select("text")
+          .transition("hover-text")
+          .duration(300)
+          .attr("y", d.type === NodeType.CORE ? 45 : 32)
+          .style("font-weight", "600");
       });
 
     // Node Visuals
-    // 1. Glow Halo (fades in)
+    
+    // 1. Halo (Hover/Select effect)
     nodeEnter.append("circle")
-      .attr("r", 0) // animate from 0
+      .attr("r", 0) 
       .attr("fill", d => getNodeColor(d.type))
-      .attr("opacity", 0.15)
+      .attr("opacity", 0.2)
       .attr("class", "halo")
-      .transition().duration(700).ease(d3.easeBackOut)
-      .attr("r", d => d.type === NodeType.CORE ? 45 : 30);
+      .transition().duration(600).ease(d3.easeElasticOut)
+      .attr("r", d => d.type === NodeType.CORE ? 42 : 28);
 
-    // 2. Main Circle
+    // 2. Main Circle (White border, colored fill)
     nodeEnter.append("circle")
       .attr("r", 0)
-      .attr("fill", "#0f172a") // Dark background for contrast
-      .attr("stroke", d => getNodeColor(d.type))
+      .attr("fill", d => getNodeColor(d.type)) // Fill with color
+      .attr("stroke", nodeStroke) // Dynamic
       .attr("stroke-width", 3)
-      .style("filter", "url(#drop-shadow)")
+      .style("filter", "url(#soft-shadow)")
       .transition().duration(500).ease(d3.easeBackOut)
-      .attr("r", d => d.type === NodeType.CORE ? 22 : 14);
-
-    // 3. Inner Dot (Active State)
-    nodeEnter.append("circle")
-      .attr("r", d => d.type === NodeType.CORE ? 8 : 4)
-      .attr("fill", d => getNodeColor(d.type))
-      .attr("opacity", 0.8)
-      .attr("pointer-events", "none");
+      .attr("r", d => d.type === NodeType.CORE ? 25 : 15);
 
     // Labels
     const label = nodeEnter.append("text")
       .text(d => d.label)
       .attr("x", 0)
-      .attr("y", d => d.type === NodeType.CORE ? 40 : 28)
+      .attr("y", d => d.type === NodeType.CORE ? 45 : 32)
       .attr("text-anchor", "middle")
-      .attr("fill", "#e2e8f0")
-      .attr("font-size", "0px") // Animate in
-      .attr("font-family", "Space Grotesk")
-      .attr("font-weight", "500")
+      .attr("fill", textColor) // Dynamic
+      .attr("font-size", "0px")
+      .attr("font-family", "Outfit")
+      .attr("font-weight", "600")
       .attr("pointer-events", "none")
-      .style("text-shadow", "0px 2px 4px rgba(0,0,0,0.8)")
-      .style("opacity", 0.9);
+      .style("opacity", 1)
+      .style("text-shadow", textShadow); // Dynamic
     
     label.transition().delay(100).duration(500)
-      .attr("font-size", d => d.type === NodeType.CORE ? "14px" : "11px");
+      .attr("font-size", d => d.type === NodeType.CORE ? "16px" : "12px");
 
     const nodeMerge = nodeEnter.merge(node);
 
-    // Update Visited State (Thick white border or glow change)
-    nodeMerge.select("circle:nth-child(2)") // Select main circle
+    // Update Visited State
+    nodeMerge.select("circle:nth-child(2)") // Main circle
         .transition().duration(300)
-        .attr("stroke-width", d => d.visited ? 4 : 2)
-        .attr("stroke", d => d.visited ? "#f8fafc" : getNodeColor(d.type)); // White border if visited
+        .attr("stroke", d => d.visited ? nodeStrokeVisited : nodeStroke)
+        .attr("stroke-width", d => d.visited ? 4 : 3);
 
     simulation.on("tick", () => {
       linkMerge
@@ -244,27 +335,23 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, hei
       d.fy = null;
     }
 
-  }, [data, width, height]);
+  }, [data, width, height]); // Note: isDarkMode is handled in the other useEffect for style updates
 
-  // Separate Effect for Handling Selection/Filtering Visuals (Performance)
+  // Filtering Logic
   useEffect(() => {
     if (!svgRef.current) return;
     const svg = d3.select(svgRef.current);
     
-    // Check if Filtering is active
     const isTypeFiltering = activeTypes.length > 0;
     const isVisitedFiltering = filterUnvisited;
     const isFiltering = isTypeFiltering || isVisitedFiltering;
     
-    // Update Node Opacity
     svg.selectAll<SVGGElement, NodeData>(".node")
         .transition().duration(400)
         .style("opacity", d => {
             if (!isFiltering) return 1;
-            
             const typeMatch = !isTypeFiltering || activeTypes.includes(d.type);
-            const visitedMatch = !isVisitedFiltering || !d.visited; // If unvisited filter is on, node must NOT be visited
-
+            const visitedMatch = !isVisitedFiltering || !d.visited;
             return (typeMatch && visitedMatch) ? 1 : 0.1;
         })
         .style("pointer-events", d => {
@@ -274,40 +361,28 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeClick, width, hei
              return (typeMatch && visitedMatch) ? "all" : "none";
         });
 
-    // Update Link Opacity
     svg.selectAll<SVGLineElement, LinkData>(".link")
         .transition().duration(400)
         .attr("opacity", d => {
-            if (!isFiltering) return 0.3;
-            // Check if both source and target are active.
-            // Note: d.source/target are NodeData references after simulation init
+            if (!isFiltering) return 0.6;
             const s = (d.source as NodeData);
             const t = (d.target as NodeData);
             
-            // Check source
-            const sTypeMatch = !isTypeFiltering || activeTypes.includes(s.type);
-            const sVisitedMatch = !isVisitedFiltering || !s.visited;
-            const sActive = sTypeMatch && sVisitedMatch;
-
-            // Check target
-            const tTypeMatch = !isTypeFiltering || activeTypes.includes(t.type);
-            const tVisitedMatch = !isVisitedFiltering || !t.visited;
-            const tActive = tTypeMatch && tVisitedMatch;
+            const sActive = (!isTypeFiltering || activeTypes.includes(s.type)) && (!isVisitedFiltering || !s.visited);
+            const tActive = (!isTypeFiltering || activeTypes.includes(t.type)) && (!isVisitedFiltering || !t.visited);
             
-            // If either end is dimmed, dim the link significantly
-            if (!sActive || !tActive) return 0.05;
-            
-            return 0.3;
+            if (!sActive || !tActive) return 0.1;
+            return 0.6;
         });
 
-  }, [activeTypes, filterUnvisited, data]); // Re-run when selection changes or data updates
+  }, [activeTypes, filterUnvisited, data]);
 
   return (
     <svg 
       ref={svgRef} 
       width={width} 
       height={height} 
-      className="w-full h-full bg-space-950 cursor-grab active:cursor-grabbing"
+      className="w-full h-full cursor-grab active:cursor-grabbing"
       onClick={() => { /* Optional: Deselect logic */ }}
     />
   );

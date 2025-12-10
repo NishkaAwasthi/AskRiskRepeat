@@ -3,56 +3,68 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Curiosity Engine</title>
+    <title>Rabbit Hole</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
-              display: ['Space Grotesk', 'sans-serif'],
+              display: ['Outfit', 'sans-serif'],
             },
             colors: {
-              space: {
-                950: '#030712',
-                900: '#0f172a',
-                800: '#1e293b',
+              cream: {
+                50: '#FFFEFA',
+                100: '#FEFCE8',
+                200: '#FFF7ED',
+                300: '#FDE68A',
               },
-              neon: {
+              rabbit: {
+                dark: '#1e293b',
+                slate: '#64748b',
                 blue: '#3b82f6',
                 purple: '#8b5cf6',
                 pink: '#ec4899',
-                cyan: '#06b6d4',
               },
             },
             animation: {
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            }
+              'bounce-slow': 'bounce 3s infinite',
+              'blob': 'blob 7s infinite',
+            },
+            keyframes: {
+              blob: {
+                '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                '100%': { transform: 'translate(0px, 0px) scale(1)' },
+              },
+            },
           },
         },
       }
     </script>
     <style>
       body {
-        background-color: #030712;
-        color: #f8fafc;
-        overflow: hidden; /* Prevent body scroll, handle in components */
+        /* background-color handled by App component for Dark Mode support */
+        color: #1e293b;
+        overflow: hidden;
       }
-      /* Custom scrollbar for sidebar */
+      /* Custom scrollbar */
       ::-webkit-scrollbar {
-        width: 6px;
+        width: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #0f172a; 
+        background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #334155; 
-        border-radius: 3px;
+        background: #cbd5e1; 
+        border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #475569; 
+        background: #94a3b8; 
       }
     </style>
   <script type="importmap">
