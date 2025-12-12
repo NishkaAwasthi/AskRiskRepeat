@@ -25,6 +25,7 @@ export interface NodeData extends SimulationNodeDatum {
   analogy: string;     // Real world analogy
   microQuest: MicroQuest;
   visited?: boolean;   // To track learning progress
+  isFavorite?: boolean;
 }
 
 export interface LinkData extends SimulationLinkDatum<NodeData> {

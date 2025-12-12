@@ -10,9 +10,9 @@ interface GraphCanvasProps {
   height: number;
   activeTypes: NodeType[]; // Types currently selected in Legend (if empty, show all)
   filterUnvisited: boolean; // Only show unvisited nodes
+  filterFavorites: boolean; // Show only favorites
   isDarkMode: boolean;
   hiddenNodeIds: Set<string>;
-  showHidden: boolean;
 }
 
 // Playful Palette
@@ -36,10 +36,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   width, 
   height, 
   activeTypes, 
-  filterUnvisited, 
+  filterUnvisited,
+  filterFavorites,
   isDarkMode,
   hiddenNodeIds,
-  showHidden
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<NodeData, LinkData> | null>(null);
@@ -150,15 +150,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const g = svg.select("g");
 
     // Filter Logic for Hiding Nodes
-    // If showHidden is false, we strictly remove nodes/links from the arrays we give to D3
-    const activeNodes = data.nodes.filter(n => showHidden || !hiddenNodeIds.has(n.id));
-    const activeNodeIds = new Set(activeNodes.map(n => n.id));
-    
-    const activeLinks = data.links.filter(l => {
-       const sourceId = typeof l.source === 'object' ? (l.source as NodeData).id : l.source;
-       const targetId = typeof l.target === 'object' ? (l.target as NodeData).id : l.target;
-       return activeNodeIds.has(sourceId as string) && activeNodeIds.has(targetId as string);
-    });
+    // Ghost Mode: We include ALL nodes in the simulation. 
+    // Hidden nodes are just styled differently later.
+    const activeNodes = data.nodes;
+    const activeLinks = data.links;
 
     // Merge logic
     const oldNodes = new Map(nodesRef.current.map(n => [n.id, n]));
@@ -167,7 +162,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const newNodes = activeNodes.map(n => {
       const existing = oldNodes.get(n.id);
       if (existing) {
-        return Object.assign(existing, { visited: n.visited });
+        return Object.assign(existing, { visited: n.visited, isFavorite: n.isFavorite });
       }
       return { ...n, x: width/2 + (Math.random() - 0.5) * 50, y: height/2 + (Math.random() - 0.5) * 50 }; 
     });
@@ -332,9 +327,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         .attr("stroke", d => d.visited ? nodeStrokeVisited : nodeStroke)
         .attr("stroke-width", d => d.visited ? 4 : 3);
     
-    // Update Hidden Style (Restored nodes look distinct)
-    nodeMerge.style("opacity", d => (showHidden && hiddenNodeIds.has(d.id)) ? 0.5 : 1);
-    nodeMerge.style("filter", d => (showHidden && hiddenNodeIds.has(d.id)) ? "grayscale(100%)" : "none");
+    // Update Hidden Style (Ghost Mode)
+    // If it's hidden, it turns grey and lowers opacity, but stays in the graph
+    nodeMerge.style("opacity", d => hiddenNodeIds.has(d.id) ? 0.5 : 1);
+    nodeMerge.style("filter", d => hiddenNodeIds.has(d.id) ? "grayscale(100%)" : "none");
 
     simulation.on("tick", () => {
       linkMerge
@@ -364,34 +360,37 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       d.fy = null;
     }
 
-  }, [data, width, height, hiddenNodeIds, showHidden]); // Re-run if hidden set changes
+  }, [data, width, height, hiddenNodeIds]); // Re-run if hidden set changes
 
-  // Filtering Logic (Type & Visited) - Visual Fade
+  // Filtering Logic (Type & Visited & Favorites) - Visual Fade
   useEffect(() => {
     if (!svgRef.current) return;
     const svg = d3.select(svgRef.current);
     
     const isTypeFiltering = activeTypes.length > 0;
     const isVisitedFiltering = filterUnvisited;
-    const isFiltering = isTypeFiltering || isVisitedFiltering;
+    const isFavoriteFiltering = filterFavorites;
+    const isFiltering = isTypeFiltering || isVisitedFiltering || isFavoriteFiltering;
     
     // Use .node class to select
     svg.selectAll<SVGGElement, NodeData>(".node")
         .transition().duration(400)
         .style("opacity", d => {
-            // Priority: if it is hidden (and restored), keep it dimmed
-            if (showHidden && hiddenNodeIds.has(d.id)) return 0.5;
+            // Priority: if it is explicitly hidden (Ghost), force dimmed
+            if (hiddenNodeIds.has(d.id)) return 0.5;
 
             if (!isFiltering) return 1;
             const typeMatch = !isTypeFiltering || activeTypes.includes(d.type);
             const visitedMatch = !isVisitedFiltering || !d.visited;
-            return (typeMatch && visitedMatch) ? 1 : 0.1;
+            const favoriteMatch = !isFavoriteFiltering || !!d.isFavorite;
+            return (typeMatch && visitedMatch && favoriteMatch) ? 1 : 0.1;
         })
         .style("pointer-events", d => {
              if (!isFiltering) return "all";
              const typeMatch = !isTypeFiltering || activeTypes.includes(d.type);
              const visitedMatch = !isVisitedFiltering || !d.visited;
-             return (typeMatch && visitedMatch) ? "all" : "none";
+             const favoriteMatch = !isFavoriteFiltering || !!d.isFavorite;
+             return (typeMatch && visitedMatch && favoriteMatch) ? "all" : "none";
         });
 
     svg.selectAll<SVGLineElement, LinkData>(".link")
@@ -401,14 +400,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
             const s = (d.source as NodeData);
             const t = (d.target as NodeData);
             
-            const sActive = (!isTypeFiltering || activeTypes.includes(s.type)) && (!isVisitedFiltering || !s.visited);
-            const tActive = (!isTypeFiltering || activeTypes.includes(t.type)) && (!isVisitedFiltering || !t.visited);
+            const sActive = (!isTypeFiltering || activeTypes.includes(s.type)) && (!isVisitedFiltering || !s.visited) && (!isFavoriteFiltering || !!s.isFavorite);
+            const tActive = (!isTypeFiltering || activeTypes.includes(t.type)) && (!isVisitedFiltering || !t.visited) && (!isFavoriteFiltering || !!t.isFavorite);
             
             if (!sActive || !tActive) return 0.1;
             return 0.6;
         });
 
-  }, [activeTypes, filterUnvisited, data, hiddenNodeIds, showHidden]);
+  }, [activeTypes, filterUnvisited, filterFavorites, data, hiddenNodeIds]);
 
   return (
     <svg 

@@ -23,6 +23,7 @@ export interface NodeData extends d3.SimulationNodeDatum {
   analogy: string;     // Real world analogy
   microQuest: MicroQuest;
   visited?: boolean;   // To track learning progress
+  isFavorite?: boolean;
 }
 
 export interface LinkData extends d3.SimulationLinkDatum<NodeData> {

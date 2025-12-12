@@ -20,11 +20,17 @@ import {
   EyeIcon,
   SunIcon,
   MoonIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  StarIcon,
+  CpuChipIcon
 } from '@heroicons/react/24/outline';
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 
 // --- Gemini Configuration ---
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+// The Curiosity Engine Model
+const ENGINE_MODEL = 'gemini-3-pro-preview';
 
 const App = () => {
   const [input, setInput] = useState('');
@@ -35,12 +41,12 @@ const App = () => {
   const [showLegend, setShowLegend] = useState(true);
   const [activeLegendTypes, setActiveLegendTypes] = useState<NodeType[]>([]);
   const [filterUnvisited, setFilterUnvisited] = useState(false);
+  const [filterFavorites, setFilterFavorites] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   
-  // Hidden Nodes State
+  // Hidden Nodes State (Ghost Mode)
   const [hiddenNodeIds, setHiddenNodeIds] = useState<Set<string>>(new Set());
-  const [showHidden, setShowHidden] = useState(false);
   
   const [testInput, setTestInput] = useState('');
   const [feedback, setFeedback] = useState<FeedbackResponse | null>(null);
@@ -72,8 +78,7 @@ const App = () => {
     setLoading(true);
     setSelectedNode(null);
     setInput(query); 
-    setHiddenNodeIds(new Set()); // Reset hidden on new query
-    setShowHidden(false);
+    setHiddenNodeIds(new Set()); 
 
     try {
       const existingLabels = graphData.nodes.map(n => n.label).join(", ");
@@ -101,12 +106,12 @@ const App = () => {
       `;
 
       const response = await genAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: ENGINE_MODEL,
         contents: prompt,
         config: {
           responseMimeType: "application/json",
           responseSchema: graphSchema,
-          systemInstruction: "You are Rabbit Hole. A playful, curious engine of knowledge. Use fun, simple language but deep concepts."
+          systemInstruction: "You are Rabbit Hole, a high-performance Curiosity Engine. You are powered by Gemini 3 Pro to ignite deep understanding through connections, metaphors, and active learning."
         }
       });
 
@@ -121,12 +126,13 @@ const App = () => {
            id: rootId,
            label: query,
            type: NodeType.CORE,
-           explanation: "The start of your adventure.",
-           analogy: "The first step.",
-           microQuest: { title: "Reflect", description: "What sparked this question?" },
+           explanation: "The spark that started it all.",
+           analogy: "The rabbit hole entrance.",
+           microQuest: { title: "Reflect", description: "What sparked this specific curiosity?" },
            x: dimensions.width / 2,
            y: dimensions.height / 2,
-           visited: true
+           visited: true,
+           isFavorite: true
         };
         const linksToRoot = newNodes.map(n => ({
             source: rootId,
@@ -188,7 +194,7 @@ const App = () => {
       `;
 
       const response = await genAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: ENGINE_MODEL,
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -230,10 +236,24 @@ const App = () => {
     setFeedback(null);
   };
 
+  const handleToggleFavorite = () => {
+    if (!selectedNode) return;
+    const newStatus = !selectedNode.isFavorite;
+    
+    // Update local state for immediate UI feedback
+    setSelectedNode({ ...selectedNode, isFavorite: newStatus });
+    
+    // Update graph data
+    setGraphData(prev => ({
+        ...prev,
+        nodes: prev.nodes.map(n => n.id === selectedNode.id ? { ...n, isFavorite: newStatus } : n)
+    }));
+  };
+
   const handleHideNode = () => {
     if (!selectedNode) return;
     
-    // Add to hidden set instead of removing from data
+    // Add to hidden set (ghost mode)
     setHiddenNodeIds(prev => {
       const next = new Set(prev);
       next.add(selectedNode.id);
@@ -260,7 +280,7 @@ const App = () => {
       `;
 
       const response = await genAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: ENGINE_MODEL,
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -298,15 +318,30 @@ const App = () => {
             height={dimensions.height}
             activeTypes={activeLegendTypes}
             filterUnvisited={filterUnvisited}
+            filterFavorites={filterFavorites}
             isDarkMode={isDarkMode}
             hiddenNodeIds={hiddenNodeIds}
-            showHidden={showHidden}
           />
         </div>
 
         {/* Top Controls: Legend & Dark Mode */}
         <div className="absolute top-6 left-6 z-10 flex flex-col gap-4">
             
+            {/* Header / Brand (Only visible when graph is active to save space) */}
+            {!isGraphEmpty && (
+                <div className="pointer-events-none mb-2">
+                    <h1 className="font-display text-2xl font-black tracking-tight flex items-center gap-2">
+                        Rabbit Hole
+                    </h1>
+                    <div className="flex items-center gap-1.5 mt-1">
+                        <CpuChipIcon className="w-3 h-3 text-rabbit-blue" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-rabbit-slate dark:text-slate-400 opacity-80">
+                            Powered by Gemini 3 Pro
+                        </span>
+                    </div>
+                </div>
+            )}
+
             {/* Filter Toggle */}
             {!isGraphEmpty && (
                 <div>
@@ -319,18 +354,30 @@ const App = () => {
                     </button>
                     
                     {showLegend && (
-                        <div className="mt-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-4 rounded-3xl shadow-xl animate-fadeIn w-64">
+                        <div className="mt-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-4 rounded-3xl shadow-xl animate-fadeIn w-64 max-h-[60vh] overflow-y-auto">
                             
                             {/* Unvisited Filter Toggle */}
                             <button 
                                 onClick={() => setFilterUnvisited(!filterUnvisited)}
-                                className={`w-full flex items-center justify-between p-2.5 rounded-xl border mb-3 transition-all font-semibold ${filterUnvisited ? 'bg-rabbit-blue/10 border-rabbit-blue text-rabbit-blue' : 'bg-slate-50 dark:bg-slate-700 border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600'}`}
+                                className={`w-full flex items-center justify-between p-2.5 rounded-xl border mb-2 transition-all font-semibold ${filterUnvisited ? 'bg-rabbit-blue/10 border-rabbit-blue text-rabbit-blue' : 'bg-slate-50 dark:bg-slate-700 border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600'}`}
                             >
                                 <div className="flex items-center gap-2">
                                     <EyeSlashIcon className="w-5 h-5" />
                                     <span className="text-sm">New Stuff Only</span>
                                 </div>
                                 {filterUnvisited && <CheckCircleIcon className="w-5 h-5" />}
+                            </button>
+
+                            {/* Favorites Filter Toggle */}
+                            <button 
+                                onClick={() => setFilterFavorites(!filterFavorites)}
+                                className={`w-full flex items-center justify-between p-2.5 rounded-xl border mb-3 transition-all font-semibold ${filterFavorites ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400 text-yellow-600 dark:text-yellow-400' : 'bg-slate-50 dark:bg-slate-700 border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600'}`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <StarIcon className="w-5 h-5" />
+                                    <span className="text-sm">Favorites Only</span>
+                                </div>
+                                {filterFavorites && <CheckCircleIcon className="w-5 h-5" />}
                             </button>
 
                             <div className="space-y-1">
@@ -359,20 +406,9 @@ const App = () => {
                             
                             <div className={`my-3 border-t ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}></div>
 
-                            <button 
-                                onClick={() => setShowHidden(!showHidden)}
-                                className={`w-full flex items-center justify-between p-2.5 rounded-xl border mb-3 transition-all font-semibold ${showHidden ? 'bg-rabbit-blue/10 border-rabbit-blue text-rabbit-blue' : 'bg-slate-50 dark:bg-slate-700 border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600'}`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <EyeIcon className="w-5 h-5" />
-                                    <span className="text-sm">Show Hidden</span>
-                                </div>
-                                {showHidden && <CheckCircleIcon className="w-5 h-5" />}
-                            </button>
-
-                            {(activeLegendTypes.length > 0 || filterUnvisited) && (
+                            {(activeLegendTypes.length > 0 || filterUnvisited || filterFavorites) && (
                                 <button 
-                                    onClick={() => { setActiveLegendTypes([]); setFilterUnvisited(false); }}
+                                    onClick={() => { setActiveLegendTypes([]); setFilterUnvisited(false); setFilterFavorites(false); }}
                                     className="w-full mt-3 text-xs text-slate-400 hover:text-rabbit-blue py-2 border-t border-slate-100 dark:border-slate-700 font-semibold"
                                 >
                                     Reset
@@ -397,13 +433,21 @@ const App = () => {
         {/* Welcome / Empty State */}
         {isGraphEmpty && !loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10 p-6">
-            <div className="text-center max-w-3xl animate-fade-in-up">
-              <h1 className="text-6xl md:text-8xl font-display font-black text-rabbit-dark dark:text-white mb-6 tracking-tight">
+            <div className="text-center max-w-4xl animate-fade-in-up">
+              <h1 className="text-6xl md:text-9xl font-display font-black text-rabbit-dark dark:text-white mb-6 tracking-tight leading-none">
                 Rabbit Hole
               </h1>
-              <p className="text-rabbit-slate dark:text-slate-400 text-xl md:text-2xl mb-12 font-medium">
-                where one question is never enough <br/>
-                so fall into your curiosity
+              
+              <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 mb-8">
+                   <CpuChipIcon className="w-5 h-5 text-rabbit-blue animate-pulse" />
+                   <span className="text-sm md:text-base font-bold text-rabbit-slate dark:text-slate-300">
+                     Built on a curiosity engine powered by <span className="text-rabbit-blue">Gemini 3 Pro</span>
+                   </span>
+              </div>
+
+              <p className="text-rabbit-slate dark:text-slate-400 text-xl md:text-2xl mb-12 font-medium max-w-2xl mx-auto">
+                Where one question is never enough. <br className="hidden md:block"/> 
+                Fall into your curiosity.
               </p>
               
               <div className="flex flex-col items-center gap-6">
@@ -485,6 +529,13 @@ const App = () => {
                   </div>
                   <div className="flex gap-2">
                     <button 
+                      onClick={handleToggleFavorite}
+                      className={`p-2 rounded-full hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition ${selectedNode.isFavorite ? 'text-yellow-400' : 'text-slate-400 hover:text-yellow-400'}`}
+                      title={selectedNode.isFavorite ? "Unfavorite" : "Favorite"}
+                    >
+                      {selectedNode.isFavorite ? <StarIconSolid className="w-6 h-6" /> : <StarIcon className="w-6 h-6" />}
+                    </button>
+                    <button 
                       onClick={handleHideNode}
                       className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-400 hover:text-rabbit-dark dark:hover:text-white"
                       title="Hide this node"
@@ -512,6 +563,7 @@ const App = () => {
                               <LightBulbIcon className="w-6 h-6" />
                           </div>
                           <h3 className="text-xs font-bold text-orange-500 uppercase tracking-widest mb-2">Think of it like...</h3>
+                          {/* UPDATED: Removed bold, added italic and relaxed font weight */}
                           <p className="text-rabbit-dark dark:text-orange-100 font-sans font-medium text-lg leading-relaxed italic">"{selectedNode.analogy}"</p>
                       </div>
 

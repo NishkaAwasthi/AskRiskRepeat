@@ -1,5 +1,5 @@
 {
   "name": "Rabbit Hole",
-  "description": "A curiosity-first learning tool that generates interactive knowledge graphs using Gemini, allowing users to explore topics through connections, analogies, and active micro-quests.",
+  "description": "Rabbit Hole is built on a curiosity engine powered by Gemini 3 Pro. It turns any question into an interactive knowledge graph, helping users learn through connections, analogies, and active exploration.",
   "requestFramePermissions": []
 }
