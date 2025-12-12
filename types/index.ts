@@ -1,4 +1,3 @@
-
 import { SimulationNodeDatum, SimulationLinkDatum } from 'd3';
 
 export enum NodeType {
@@ -26,6 +25,12 @@ export interface NodeData extends SimulationNodeDatum {
   microQuest: MicroQuest;
   visited?: boolean;   // To track learning progress
   isFavorite?: boolean;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
 export interface LinkData extends SimulationLinkDatum<NodeData> {

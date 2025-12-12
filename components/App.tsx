@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import GraphCanvas, { getNodeColor } from './GraphCanvas';
@@ -354,7 +353,7 @@ const App = () => {
                     </button>
                     
                     {showLegend && (
-                        <div className="mt-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-4 rounded-3xl shadow-xl animate-fadeIn w-64 max-h-[60vh] overflow-y-auto">
+                        <div className="mt-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-4 rounded-3xl shadow-xl animate-fadeIn w-64">
                             
                             {/* Unvisited Filter Toggle */}
                             <button 
@@ -404,8 +403,6 @@ const App = () => {
                             })}
                             </div>
                             
-                            <div className={`my-3 border-t ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}></div>
-
                             {(activeLegendTypes.length > 0 || filterUnvisited || filterFavorites) && (
                                 <button 
                                     onClick={() => { setActiveLegendTypes([]); setFilterUnvisited(false); setFilterFavorites(false); }}
@@ -420,8 +417,8 @@ const App = () => {
             )}
         </div>
 
-        {/* Dark Mode Toggle (Top Right) */}
-        <div className="absolute top-6 right-6 z-50">
+        {/* Dark Mode Toggle (Bottom Left) */}
+        <div className="absolute bottom-6 left-6 z-50">
             <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 className="p-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-full shadow-sm text-rabbit-slate dark:text-slate-300 hover:text-rabbit-blue transition"
@@ -432,31 +429,25 @@ const App = () => {
 
         {/* Welcome / Empty State */}
         {isGraphEmpty && !loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 p-6">
-            <div className="text-center max-w-4xl animate-fade-in-up">
-              <h1 className="text-6xl md:text-9xl font-display font-black text-rabbit-dark dark:text-white mb-6 tracking-tight leading-none">
+          <div className="absolute inset-0 flex flex-col items-center justify-between z-10 p-6 pointer-events-none pt-[10vh] pb-[10vh]">
+            <div className="text-center max-w-4xl animate-fade-in-up pointer-events-auto">
+              <h1 className="text-6xl md:text-9xl font-display font-black text-rabbit-dark dark:text-white mb-8 tracking-tight leading-none">
                 Rabbit Hole
               </h1>
               
-              <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 mb-8">
-                   <CpuChipIcon className="w-5 h-5 text-rabbit-blue animate-pulse" />
-                   <span className="text-sm md:text-base font-bold text-rabbit-slate dark:text-slate-300">
-                     Built on a curiosity engine powered by <span className="text-rabbit-blue">Gemini 3 Pro</span>
-                   </span>
-              </div>
-
-              <p className="text-rabbit-slate dark:text-slate-400 text-xl md:text-2xl mb-12 font-medium max-w-2xl mx-auto">
+              <p className="text-rabbit-slate dark:text-slate-400 text-xl md:text-2xl mb-16 font-medium max-w-2xl mx-auto">
                 Where one question is never enough. <br className="hidden md:block"/> 
                 Fall into your curiosity.
               </p>
-              
-              <div className="flex flex-col items-center gap-6">
-                  <div className="flex flex-wrap justify-center gap-4">
+            </div>
+            
+            <div className="flex flex-col items-center gap-6 pointer-events-auto">
+                  <div className="flex flex-wrap justify-center gap-3">
                     {suggestedQuestions.map((q, i) => (
                       <button
                         key={q}
                         onClick={() => handleInitialQuery(undefined, q)}
-                        className="px-6 py-3 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 hover:border-rabbit-blue dark:hover:border-rabbit-blue hover:text-rabbit-blue text-rabbit-slate dark:text-slate-200 text-base font-semibold transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-1"
+                        className="px-5 py-2.5 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 hover:border-rabbit-blue dark:hover:border-rabbit-blue hover:text-rabbit-blue text-rabbit-slate dark:text-slate-200 text-sm font-semibold transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-1"
                         style={{ animationDelay: `${i * 100}ms` }}
                       >
                         {q}
@@ -466,21 +457,23 @@ const App = () => {
                   
                   <button 
                     onClick={refreshSuggestions}
-                    className="flex items-center gap-2 text-rabbit-slate dark:text-slate-400 hover:text-rabbit-blue dark:hover:text-rabbit-blue transition-colors text-sm font-semibold"
+                    className="flex items-center gap-2 text-rabbit-slate dark:text-slate-400 hover:text-rabbit-blue dark:hover:text-rabbit-blue transition-colors text-xs font-bold uppercase tracking-widest"
                   >
                     <ArrowPathIcon className="w-4 h-4" />
                     <span>Shuffle ideas</span>
                   </button>
               </div>
-
-            </div>
           </div>
         )}
 
         {/* Input Bar */}
-        <div className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-2xl px-4 z-20 transition-all duration-500`}>
+        <div 
+            className={`fixed left-1/2 transform -translate-x-1/2 w-full max-w-2xl px-4 z-20 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                isGraphEmpty ? 'bottom-[35vh]' : 'bottom-8'
+            }`}
+        >
           <form onSubmit={(e) => handleInitialQuery(e)} className="relative group">
-            <div className="relative flex items-center bg-white dark:bg-slate-800 rounded-full border-2 border-slate-100 dark:border-slate-700 shadow-xl focus-within:border-rabbit-blue focus-within:ring-4 focus-within:ring-rabbit-blue/10 transition-all p-2">
+            <div className="relative flex items-center bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-full border-2 border-slate-300/50 dark:border-slate-600 shadow-2xl shadow-rabbit-blue/10 dark:shadow-black/60 focus-within:border-rabbit-blue focus-within:ring-4 focus-within:ring-rabbit-blue/10 transition-all duration-300 p-2 hover:border-rabbit-blue/40 hover:shadow-rabbit-blue/20 transform hover:-translate-y-0.5">
               <div className="pl-4 text-rabbit-blue">
                   {loading ? (
                       <div className="w-6 h-6 border-2 border-rabbit-blue border-t-transparent rounded-full animate-spin"></div>
@@ -499,7 +492,7 @@ const App = () => {
               <button 
                   type="submit"
                   disabled={!input.trim() || loading}
-                  className="p-3 bg-rabbit-dark dark:bg-slate-700 rounded-full text-white hover:bg-rabbit-blue dark:hover:bg-rabbit-blue transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  className="p-3 bg-rabbit-dark dark:bg-slate-700 rounded-full text-white hover:bg-rabbit-blue dark:hover:bg-rabbit-blue transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg hover:scale-105 active:scale-95"
               >
                   <ArrowRightIcon className="w-5 h-5" />
               </button>

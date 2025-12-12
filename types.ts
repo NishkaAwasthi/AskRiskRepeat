@@ -1,3 +1,4 @@
+import { SimulationNodeDatum, SimulationLinkDatum } from 'd3';
 
 export enum NodeType {
   CORE = 'CORE',               // Root node
@@ -15,7 +16,7 @@ export interface MicroQuest {
   description: string;
 }
 
-export interface NodeData extends d3.SimulationNodeDatum {
+export interface NodeData extends SimulationNodeDatum {
   id: string;
   label: string;
   type: NodeType;
@@ -24,9 +25,15 @@ export interface NodeData extends d3.SimulationNodeDatum {
   microQuest: MicroQuest;
   visited?: boolean;   // To track learning progress
   isFavorite?: boolean;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
-export interface LinkData extends d3.SimulationLinkDatum<NodeData> {
+export interface LinkData extends SimulationLinkDatum<NodeData> {
   source: string | NodeData;
   target: string | NodeData;
   relation: string;
