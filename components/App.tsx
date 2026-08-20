@@ -4,6 +4,7 @@ import GraphCanvas, { getNodeColor } from './GraphCanvas';
 import { GraphState, NodeData, NodeType, FeedbackResponse } from '../types';
 import { QUESTION_BANK } from '../data/questions';
 import { graphSchema, feedbackSchema } from '../data/schemas';
+import { GEMINI_API_KEY } from 'virtual:gemini-key';
 import { 
   SparklesIcon, 
   BeakerIcon, 
@@ -25,11 +26,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 
-// --- Gemini Configuration ---
-const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-// The Curiosity Engine Model
-const ENGINE_MODEL = 'gemini-3-pro-preview';
+const apiKey = GEMINI_API_KEY;
+const genAI = new GoogleGenAI({ apiKey });
+const ENGINE_MODEL = 'gemini-3.5-flash';
+const hasApiKey = Boolean(apiKey);
 
 const App = () => {
   const [input, setInput] = useState('');
@@ -50,6 +50,9 @@ const App = () => {
   const [testInput, setTestInput] = useState('');
   const [feedback, setFeedback] = useState<FeedbackResponse | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(
+    hasApiKey ? null : 'Add GEMINI_API_KEY to .env.local, then restart npm run dev.'
+  );
 
   useEffect(() => {
     const handleResize = () => setDimensions({ width: window.innerWidth, height: window.innerHeight });
@@ -74,10 +77,16 @@ const App = () => {
     const query = overrideInput || input;
     if (!query.trim()) return;
 
+    if (!hasApiKey) {
+      setErrorMessage('Add GEMINI_API_KEY to .env.local, then restart npm run dev.');
+      return;
+    }
+
     setLoading(true);
     setSelectedNode(null);
     setInput(query); 
-    setHiddenNodeIds(new Set()); 
+    setHiddenNodeIds(new Set());
+    setErrorMessage(null); 
 
     try {
       const existingLabels = graphData.nodes.map(n => n.label).join(", ");
@@ -110,7 +119,7 @@ const App = () => {
         config: {
           responseMimeType: "application/json",
           responseSchema: graphSchema,
-          systemInstruction: "You are Rabbit Hole, a high-performance Curiosity Engine. You are powered by Gemini 3 Pro to ignite deep understanding through connections, metaphors, and active learning."
+          systemInstruction: "You are Rabbit Hole, a high-performance Curiosity Engine. Ignite deep understanding through connections, metaphors, and active learning."
         }
       });
 
@@ -161,6 +170,7 @@ const App = () => {
       if (!overrideInput) setInput('');
     } catch (err) {
       console.error("Gemini Error:", err);
+      setErrorMessage(err instanceof Error ? err.message : 'Could not generate a graph. Check your API key and try again.');
     } finally {
       setLoading(false);
     }
@@ -220,6 +230,7 @@ const App = () => {
 
     } catch (err) {
       console.error("Expansion Error:", err);
+      setErrorMessage(err instanceof Error ? err.message : 'Could not expand this node. Try again.');
     } finally {
       setLoading(false);
     }
@@ -290,6 +301,7 @@ const App = () => {
       setFeedback(JSON.parse(response.text));
     } catch (err) {
       console.error(err);
+      setErrorMessage(err instanceof Error ? err.message : 'Could not check your explanation. Try again.');
     } finally {
       setFeedbackLoading(false);
     }
@@ -335,7 +347,7 @@ const App = () => {
                     <div className="flex items-center gap-1.5 mt-1">
                         <CpuChipIcon className="w-3 h-3 text-rabbit-blue" />
                         <span className="text-[10px] font-bold uppercase tracking-widest text-rabbit-slate dark:text-slate-400 opacity-80">
-                            Powered by Gemini 3 Pro
+                            Powered by Gemini
                         </span>
                     </div>
                 </div>
@@ -416,6 +428,22 @@ const App = () => {
                 </div>
             )}
         </div>
+
+        {errorMessage && (
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 max-w-xl w-[calc(100%-2rem)]">
+            <div className="flex items-start gap-3 bg-white/95 dark:bg-slate-800/95 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300 rounded-2xl shadow-lg px-4 py-3">
+              <ExclamationCircleIcon className="w-5 h-5 shrink-0 mt-0.5" />
+              <p className="text-sm font-medium leading-relaxed">{errorMessage}</p>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="ml-auto p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30"
+                aria-label="Dismiss error"
+              >
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Dark Mode Toggle (Bottom Left) */}
         <div className="absolute bottom-6 left-6 z-50">
